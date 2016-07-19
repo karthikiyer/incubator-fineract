@@ -18,6 +18,7 @@
  */
 package org.apache.fineract.portfolio.collateral.service;
 
+import java.math.BigDecimal;
 import java.util.Map;
 
 import org.apache.fineract.infrastructure.codes.domain.CodeValue;
@@ -30,6 +31,11 @@ import org.apache.fineract.infrastructure.security.service.PlatformSecurityConte
 import org.apache.fineract.portfolio.collateral.api.CollateralApiConstants;
 import org.apache.fineract.portfolio.collateral.api.CollateralApiConstants.COLLATERAL_JSON_INPUT_PARAMS;
 import org.apache.fineract.portfolio.collateral.command.CollateralCommand;
+import org.apache.fineract.portfolio.collateral.command.CollateralCommandV2;
+import org.apache.fineract.portfolio.collateral.domain.Collateral;
+import org.apache.fineract.portfolio.collateral.domain.CollateralBase;
+import org.apache.fineract.portfolio.collateral.domain.CollateralBaseRepository;
+import org.apache.fineract.portfolio.collateral.domain.CollateralRepositoryV2;
 import org.apache.fineract.portfolio.collateral.domain.LoanCollateral;
 import org.apache.fineract.portfolio.collateral.domain.LoanCollateralRepository;
 import org.apache.fineract.portfolio.collateral.exception.CollateralCannotBeCreatedException;
@@ -50,6 +56,11 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.google.gson.JsonArray;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
+
 @Service
 public class CollateralWritePlatformServiceJpaRepositoryImpl implements CollateralWritePlatformService {
 
@@ -58,18 +69,23 @@ public class CollateralWritePlatformServiceJpaRepositoryImpl implements Collater
     private final PlatformSecurityContext context;
     private final LoanRepository loanRepository;
     private final LoanCollateralRepository collateralRepository;
+    private final CollateralRepositoryV2 collateralRepositoryV2;
+    private final CollateralBaseRepository collateralBaseRepository;
     private final CodeValueRepositoryWrapper codeValueRepository;
     private final CollateralCommandFromApiJsonDeserializer collateralCommandFromApiJsonDeserializer;
 
     @Autowired
     public CollateralWritePlatformServiceJpaRepositoryImpl(final PlatformSecurityContext context, final LoanRepository loanRepository,
             final LoanCollateralRepository collateralRepository, final CodeValueRepositoryWrapper codeValueRepository,
-            final CollateralCommandFromApiJsonDeserializer collateralCommandFromApiJsonDeserializer) {
+            final CollateralCommandFromApiJsonDeserializer collateralCommandFromApiJsonDeserializer, final CollateralRepositoryV2 collateralRepositoryV2,
+            final CollateralBaseRepository collateralBaseRepository) {
         this.context = context;
         this.loanRepository = loanRepository;
         this.collateralRepository = collateralRepository;
         this.codeValueRepository = codeValueRepository;
         this.collateralCommandFromApiJsonDeserializer = collateralCommandFromApiJsonDeserializer;
+        this.collateralRepositoryV2 = collateralRepositoryV2;
+        this.collateralBaseRepository=collateralBaseRepository;
     }
 
     @Transactional
@@ -77,29 +93,87 @@ public class CollateralWritePlatformServiceJpaRepositoryImpl implements Collater
     public CommandProcessingResult addCollateral(final Long loanId, final JsonCommand command) {
 
         this.context.authenticatedUser();
-        final CollateralCommand collateralCommand = this.collateralCommandFromApiJsonDeserializer.commandFromApiJson(command.json());
-        collateralCommand.validateForCreate();
-
+        String jsonString=command.json();
+        JsonObject json = (JsonObject)(new JsonParser().parse(jsonString));
+        BigDecimal loanValue=new BigDecimal("0.0");
+        String description="";
+        Long type_cv_id=json.get("type_cv_id").getAsLong();
+//        final CollateralCommand collateralCommand = this.collateralCommandFromApiJsonDeserializer.commandFromApiJson(command.json());
+//        collateralCommand.validateForCreate();
+        
         try {
             final Loan loan = this.loanRepository.findOne(loanId);
             if (loan == null) { throw new LoanNotFoundException(loanId); }
+            
+//            if (!loan.status().isSubmittedAndPendingApproval()) { throw new CollateralCannotBeCreatedException(
+//                    LOAN_COLLATERAL_CANNOT_BE_CREATED_REASON.LOAN_NOT_IN_SUBMITTED_AND_PENDING_APPROVAL_STAGE, loan.getId()); }
 
+            
+            if(json.has("collateralDetails")){
+            	JsonArray coll_details=json.get("collateralDetails").getAsJsonArray();
+            	for(JsonElement j:coll_details){
+            		JsonObject obj=(JsonObject)j;
+            		Long units=obj.get("units").getAsLong();
+            		Long collateralId=obj.get("collateralId").getAsLong();
+            		Collateral c=collateralRepositoryV2.getOne(collateralId);
+            		BigDecimal pctToBase=c.getPctToBase();
+            		Long baseId=c.getBase().getId();
+            		CollateralBase base=collateralBaseRepository.getOne(baseId);
+            		BigDecimal baseValue=base.getBasePrice();
+            		baseValue=baseValue.multiply(new BigDecimal(units.toString()));
+            		baseValue=baseValue.multiply(pctToBase.divide(new BigDecimal("100.0")));
+            		loanValue=loanValue.add(baseValue);
+            		description=description+c.getId()+"C<->"+units+"U,";
+            		
+            	}
+            }
+            
+            
+    		
             final CodeValue collateralType = this.codeValueRepository.findOneByCodeNameAndIdWithNotFoundDetection(
-                    CollateralApiConstants.COLLATERAL_CODE_NAME, collateralCommand.getCollateralTypeId());
-            final LoanCollateral collateral = LoanCollateral.fromJson(loan, collateralType, command);
+                    CollateralApiConstants.COLLATERAL_CODE_NAME, type_cv_id);
+            LoanCollateral loancollateral=new LoanCollateral(loan,collateralType,loanValue,description);
+            this.collateralRepository.save(loancollateral);
+//            final LoanCollateral collateral = LoanCollateral.fromJson(loan, collateralType, command);
 
             /**
              * Collaterals may be added only when the loan associated with them
              * are yet to be approved
              **/
-            if (!loan.status().isSubmittedAndPendingApproval()) { throw new CollateralCannotBeCreatedException(
-                    LOAN_COLLATERAL_CANNOT_BE_CREATED_REASON.LOAN_NOT_IN_SUBMITTED_AND_PENDING_APPROVAL_STAGE, loan.getId()); }
-
-            this.collateralRepository.save(collateral);
+            
+//            this.collateralRepository.save(collateral);
 
             return new CommandProcessingResultBuilder() //
                     .withCommandId(command.commandId()) //
                     .withLoanId(loan.getId())//
+                    .withEntityId(loancollateral.getId()) //
+                    .build();
+        } catch (final DataIntegrityViolationException dve) {
+            handleCollateralDataIntegrityViolation(dve);
+            return CommandProcessingResult.empty();
+        }
+    }
+    
+    @Transactional
+    @Override
+    public CommandProcessingResult addCollateralV2(final JsonCommand command) {
+    	
+        this.context.authenticatedUser();
+        String jsonString = command.json();
+        JsonObject json = (JsonObject)(new JsonParser().parse(jsonString));
+        Long base_id=json.get("base_id").getAsLong();
+        String qualityStandard=json.get("qualityStandard").getAsString();
+        BigDecimal pctToBase=json.get("percentageToBase").getAsBigDecimal();
+
+        try {
+           
+            CollateralBase collateralBase=collateralBaseRepository.findOne(base_id);
+            final Collateral collateral = new Collateral(collateralBase,qualityStandard,pctToBase);
+
+            this.collateralRepositoryV2.save(collateral);
+
+            return new CommandProcessingResultBuilder() //
+                    .withCommandId(command.commandId()) //
                     .withEntityId(collateral.getId()) //
                     .build();
         } catch (final DataIntegrityViolationException dve) {
@@ -107,7 +181,37 @@ public class CollateralWritePlatformServiceJpaRepositoryImpl implements Collater
             return CommandProcessingResult.empty();
         }
     }
+    
+    @Transactional
+    @Override
+    public CommandProcessingResult addCollateralBase(final JsonCommand command) {
+    	
+    	this.context.authenticatedUser();
+    	String jsonString = command.json();
+    	JsonObject json = (JsonObject)(new JsonParser().parse(jsonString));
+    	
+    	Long cv_type_id=json.get("type_cv_id").getAsLong();
+        BigDecimal basePrice=json.get("basePrice").getAsBigDecimal();
 
+        try {
+           
+            final CodeValue collateralType = this.codeValueRepository.findOneByCodeNameAndIdWithNotFoundDetection(
+                    CollateralApiConstants.COLLATERAL_CODE_NAME,cv_type_id );
+            final CollateralBase collateralBase = new CollateralBase(collateralType, basePrice);
+
+            this.collateralBaseRepository.save(collateralBase);
+
+            return new CommandProcessingResultBuilder() //
+                    .withCommandId(command.commandId()) //
+                    .withEntityId(collateralBase.getId()) //
+                    .build();
+        } catch (final DataIntegrityViolationException dve) {
+            handleCollateralDataIntegrityViolation(dve);
+            return CommandProcessingResult.empty();
+        }
+    	
+    }
+    
     @Transactional
     @Override
     public CommandProcessingResult updateCollateral(final Long loanId, final Long collateralId, final JsonCommand command) {
@@ -151,6 +255,43 @@ public class CollateralWritePlatformServiceJpaRepositoryImpl implements Collater
                     .withLoanId(command.getLoanId())//
                     .withEntityId(collateralId) //
                     .with(changes) //
+                    .build();
+        } catch (final DataIntegrityViolationException dve) {
+            handleCollateralDataIntegrityViolation(dve);
+            return new CommandProcessingResult(Long.valueOf(-1));
+        }
+    }
+    
+    @Transactional
+    @Override
+    public CommandProcessingResult updateCollateralV2(final Long collateralId, final JsonCommand command) {
+
+        this.context.authenticatedUser();
+        String jsonString=command.json();
+        JsonObject json=(JsonObject)(new JsonParser().parse(jsonString));
+
+        
+        try {
+          
+            Collateral collateral=collateralRepositoryV2.findOne(collateralId);
+            
+            if(!jsonString.equals("{}")){
+            	
+            	if(json.has("pctToBase")){
+            		collateral.setPctToBase(json.get("pctToBase").getAsBigDecimal());
+            	}
+            	
+            	if(json.has("quality_standard")){
+            		collateral.setQuality(json.get("quality_standard").getAsString());
+            	}
+            	
+            	this.collateralRepositoryV2.saveAndFlush(collateral);
+            	
+            }
+
+            return new CommandProcessingResultBuilder() //
+                    .withCommandId(command.commandId()) //
+                    .withEntityId(collateralId) //
                     .build();
         } catch (final DataIntegrityViolationException dve) {
             handleCollateralDataIntegrityViolation(dve);

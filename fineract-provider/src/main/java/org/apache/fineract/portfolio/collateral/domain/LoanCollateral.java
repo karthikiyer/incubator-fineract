@@ -65,7 +65,7 @@ public class LoanCollateral extends AbstractPersistable<Long> {
         //
     }
 
-    private LoanCollateral(final Loan loan, final CodeValue collateralType, final BigDecimal value, final String description) {
+    public LoanCollateral(final Loan loan, final CodeValue collateralType, final BigDecimal value, final String description) {
         this.loan = loan;
         this.type = collateralType;
         this.value = value;

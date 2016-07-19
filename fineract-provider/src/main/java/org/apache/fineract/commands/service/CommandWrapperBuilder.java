@@ -1543,6 +1543,28 @@ public class CommandWrapperBuilder {
         return this;
     }
 
+    public CommandWrapperBuilder createCollateralV2(){
+    	this.actionName = "CREATE";
+    	this.entityName = "COLLATERALV2";
+    	this.href = "/collaterals";
+    	return this;
+    }
+    
+    public CommandWrapperBuilder updateCollateralV2(final Long collateralId){
+    	this.actionName = "UPDATE";
+    	this.entityName = "COLLATERALV2";
+    	this.entityId=collateralId;
+    	this.href = "/collaterals/"+collateralId;
+    	return this;
+    }
+    
+    public CommandWrapperBuilder addCollateralBase(){
+    	this.actionName = "CREATE";
+    	this.entityName="COLLATERALBASE";
+    	this.href = "/collaterals/baseprice";
+    	return this;
+    }
+    
     public CommandWrapperBuilder updateCollateral(final Long loanId, final Long collateralId) {
         this.actionName = "UPDATE";
         this.entityName = "COLLATERAL";

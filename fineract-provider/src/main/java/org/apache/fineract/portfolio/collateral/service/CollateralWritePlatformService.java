@@ -28,4 +28,10 @@ public interface CollateralWritePlatformService {
     CommandProcessingResult updateCollateral(Long loanId, Long collateralId, JsonCommand command);
 
     CommandProcessingResult deleteCollateral(Long loanId, Long collateralId, Long commandId);
+    
+    CommandProcessingResult addCollateralV2(JsonCommand command);
+
+	CommandProcessingResult updateCollateralV2(Long collateralId, JsonCommand command);
+
+	CommandProcessingResult addCollateralBase(JsonCommand command);
 }
