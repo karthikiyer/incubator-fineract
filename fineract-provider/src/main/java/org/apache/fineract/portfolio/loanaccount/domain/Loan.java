@@ -1481,13 +1481,13 @@ public class Loan extends AbstractPersistable<Long> {
             actualChanges.put("recalculateLoanSchedule", true);
         }
 
-        final String collateralParamName = "collateral";
-        if (command.parameterExists(collateralParamName)) {
-
-            if (!possiblyModifedLoanCollateralItems.equals(this.collateral)) {
-                actualChanges.put(collateralParamName, listOfLoanCollateralData(possiblyModifedLoanCollateralItems));
-            }
-        }
+//        final String collateralParamName = "collateral";
+//        if (command.parameterExists(collateralParamName)) {
+//
+//            if (!possiblyModifedLoanCollateralItems.equals(this.collateral)) {
+//                actualChanges.put(collateralParamName, listOfLoanCollateralData(possiblyModifedLoanCollateralItems));
+//            }
+//        }
 
         final String loanTermFrequencyParamName = "loanTermFrequency";
         if (command.isChangeInIntegerParameterNamed(loanTermFrequencyParamName, this.termFrequency)) {
@@ -1853,22 +1853,22 @@ public class Loan extends AbstractPersistable<Long> {
         return list;
     }
 
-    private CollateralData[] listOfLoanCollateralData(final Set<LoanCollateral> setOfLoanCollateral) {
-
-        CollateralData[] existingLoanCollateral = null;
-
-        final List<CollateralData> loanCollateralList = new ArrayList<>();
-        for (final LoanCollateral loanCollateral : setOfLoanCollateral) {
-
-            final CollateralData data = loanCollateral.toData();
-
-            loanCollateralList.add(data);
-        }
-
-        existingLoanCollateral = loanCollateralList.toArray(new CollateralData[loanCollateralList.size()]);
-
-        return existingLoanCollateral;
-    }
+//    private CollateralData[] listOfLoanCollateralData(final Set<LoanCollateral> setOfLoanCollateral) {
+//
+//        CollateralData[] existingLoanCollateral = null;
+//
+//        final List<CollateralData> loanCollateralList = new ArrayList<>();
+//        for (final LoanCollateral loanCollateral : setOfLoanCollateral) {
+//
+//            final CollateralData data = loanCollateral.toData();
+//
+//            loanCollateralList.add(data);
+//        }
+//
+//        existingLoanCollateral = loanCollateralList.toArray(new CollateralData[loanCollateralList.size()]);
+//
+//        return existingLoanCollateral;
+//    }
 
     private LoanChargeCommand[] getLoanCharges(final Set<LoanCharge> setOfLoanCharges) {
 

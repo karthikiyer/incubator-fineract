@@ -8,6 +8,7 @@ import javax.persistence.Column;
 import javax.persistence.Entity;
 import javax.persistence.JoinColumn;
 import javax.persistence.ManyToOne;
+import javax.persistence.OneToOne;
 import javax.persistence.Table;
 
 import org.apache.commons.lang.StringUtils;
@@ -25,7 +26,7 @@ import org.springframework.data.jpa.domain.AbstractPersistable;
 @Table(name = "m_collateral_base_value")
 public class CollateralBase extends AbstractPersistable<Long> {
 
-    @ManyToOne
+    @OneToOne
     @JoinColumn(name = "type_cv_id", nullable = false)
     private CodeValue type;
 

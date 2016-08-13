@@ -26,6 +26,8 @@ import java.util.Set;
 import org.apache.fineract.infrastructure.codes.domain.CodeValue;
 import org.apache.fineract.infrastructure.codes.domain.CodeValueRepositoryWrapper;
 import org.apache.fineract.infrastructure.core.serialization.FromJsonHelper;
+import org.apache.fineract.portfolio.collateral.domain.Collateral;
+import org.apache.fineract.portfolio.collateral.domain.CollateralRepositoryV2;
 import org.apache.fineract.portfolio.collateral.domain.LoanCollateral;
 import org.apache.fineract.portfolio.collateral.domain.LoanCollateralRepository;
 import org.apache.fineract.portfolio.collateral.exception.CollateralNotFoundException;
@@ -40,14 +42,15 @@ import com.google.gson.JsonObject;
 public class CollateralAssembler {
 
     private final FromJsonHelper fromApiJsonHelper;
-    private final CodeValueRepositoryWrapper codeValueRepository;
+    //private final CodeValueRepositoryWrapper codeValueRepository;
     private final LoanCollateralRepository loanCollateralRepository;
+    private final CollateralRepositoryV2 collateralRepository;
 
     @Autowired
-    public CollateralAssembler(final FromJsonHelper fromApiJsonHelper, final CodeValueRepositoryWrapper codeValueRepository,
+    public CollateralAssembler(final FromJsonHelper fromApiJsonHelper, final CollateralRepositoryV2 collateralRepository,
             final LoanCollateralRepository loanCollateralRepository) {
         this.fromApiJsonHelper = fromApiJsonHelper;
-        this.codeValueRepository = codeValueRepository;
+        this.collateralRepository = collateralRepository;
         this.loanCollateralRepository = loanCollateralRepository;
     }
 
@@ -66,18 +69,18 @@ public class CollateralAssembler {
                     final JsonObject collateralItemElement = array.get(i).getAsJsonObject();
 
                     final Long id = this.fromApiJsonHelper.extractLongNamed("id", collateralItemElement);
-                    final Long collateralTypeId = this.fromApiJsonHelper.extractLongNamed("type", collateralItemElement);
-                    final CodeValue collateralType = this.codeValueRepository.findOneWithNotFoundDetection(collateralTypeId);
-                    final String description = this.fromApiJsonHelper.extractStringNamed("description", collateralItemElement);
+                    final Long collateralId = this.fromApiJsonHelper.extractLongNamed("collateral", collateralItemElement);
+                    final Collateral collateral = this.collateralRepository.findOne(collateralId);
+                    final BigDecimal quantity = this.fromApiJsonHelper.extractBigDecimalNamed("quantity", collateralItemElement, locale);
                     final BigDecimal value = this.fromApiJsonHelper.extractBigDecimalNamed("value", collateralItemElement, locale);
 
                     if (id == null) {
-                        collateralItems.add(LoanCollateral.from(collateralType, value, description));
+                        collateralItems.add(LoanCollateral.from(collateral, value, quantity));
                     } else {
                         final LoanCollateral loanCollateralItem = this.loanCollateralRepository.findOne(id);
                         if (loanCollateralItem == null) { throw new CollateralNotFoundException(id); }
 
-                        loanCollateralItem.assembleFrom(collateralType, value, description);
+                        loanCollateralItem.assembleFrom(collateral, value, quantity);
 
                         collateralItems.add(loanCollateralItem);
                     }

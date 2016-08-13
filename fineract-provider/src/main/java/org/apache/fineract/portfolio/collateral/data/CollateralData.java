@@ -23,6 +23,8 @@ import java.util.Collection;
 
 import org.apache.fineract.infrastructure.codes.data.CodeValueData;
 import org.apache.fineract.organisation.monetary.data.CurrencyData;
+import org.apache.fineract.portfolio.collateral.domain.Collateral;
+import org.apache.fineract.portfolio.collateral.domain.CollateralRepositoryV2;
 
 /**
  * Immutable data object for Collateral data.
@@ -30,44 +32,45 @@ import org.apache.fineract.organisation.monetary.data.CurrencyData;
 public class CollateralData {
 
     private final Long id;
-    private final CodeValueData type;
+    private final CollateralProductData collateral;
     private final BigDecimal value;
-    private final String description;
+    private final BigDecimal quantity;
     @SuppressWarnings("unused")
     private final Collection<CodeValueData> allowedCollateralTypes;
     private final CurrencyData currency;
 
-    public static CollateralData instance(final Long id, final CodeValueData type, final BigDecimal value, final String description,
+    public static CollateralData instance(final Long id, final CollateralProductData collateral, final BigDecimal value, final BigDecimal quantity,
             final CurrencyData currencyData) {
-        return new CollateralData(id, type, value, description, currencyData);
+        return new CollateralData(id, collateral, value, quantity, currencyData);
     }
 
     public static CollateralData template(final Collection<CodeValueData> codeValues) {
         return new CollateralData(null, null, null, null, null, codeValues);
     }
 
-    private CollateralData(final Long id, final CodeValueData type, final BigDecimal value, final String description,
+    private CollateralData(final Long id, final CollateralProductData collateral, final BigDecimal value, final BigDecimal quantity,
             final CurrencyData currencyData) {
         this.id = id;
-        this.type = type;
+        this.collateral = collateral;
         this.value = value;
-        this.description = description;
+        this.quantity = quantity;
         this.currency = currencyData;
         this.allowedCollateralTypes = null;
     }
 
-    private CollateralData(final Long id, final CodeValueData type, final BigDecimal value, final String description,
+    private CollateralData(final Long id, final CollateralProductData collateral, final BigDecimal value, final BigDecimal quantity,
             final CurrencyData currencyData, final Collection<CodeValueData> allowedCollateralTypes) {
         this.id = id;
-        this.type = type;
+        this.collateral = collateral;
         this.value = value;
-        this.description = description;
+        this.quantity = quantity;
         this.currency = currencyData;
         this.allowedCollateralTypes = allowedCollateralTypes;
     }
 
     public CollateralData template(final CollateralData collateralData, final Collection<CodeValueData> codeValues) {
-        return new CollateralData(collateralData.id, collateralData.type, collateralData.value, collateralData.description,
+        return new CollateralData(collateralData.id, collateralData.collateral, collateralData.value, collateralData.quantity,
                 collateralData.currency, codeValues);
     }
+    
 }

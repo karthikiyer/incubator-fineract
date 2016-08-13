@@ -22,6 +22,7 @@ import java.math.BigDecimal;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
+import javax.persistence.CascadeType;
 import javax.persistence.Column;
 import javax.persistence.Entity;
 import javax.persistence.JoinColumn;
@@ -37,6 +38,7 @@ import org.apache.fineract.infrastructure.core.api.JsonCommand;
 import org.apache.fineract.portfolio.collateral.api.CollateralApiConstants.COLLATERAL_JSON_INPUT_PARAMS;
 import org.apache.fineract.portfolio.collateral.data.CollateralData;
 import org.apache.fineract.portfolio.loanaccount.domain.Loan;
+import org.hibernate.annotations.Cascade;
 import org.springframework.data.jpa.domain.AbstractPersistable;
 
 @Entity
@@ -47,34 +49,33 @@ public class LoanCollateral extends AbstractPersistable<Long> {
     @JoinColumn(name = "loan_id", nullable = false)
     private Loan loan;
 
-    @ManyToOne
-    @JoinColumn(name = "type_cv_id", nullable = false)
-    private CodeValue type;
+    @JoinColumn(name = "collateral_id")
+    private Collateral collateral;
 
     @Column(name = "value", scale = 6, precision = 19)
     private BigDecimal value;
 
-    @Column(name = "description", length = 500)
-    private String description;
+    @Column(name = "quantity", length = 500)
+    private BigDecimal quantity;
 
-    public static LoanCollateral from(final CodeValue collateralType, final BigDecimal value, final String description) {
-        return new LoanCollateral(null, collateralType, value, description);
+    public static LoanCollateral from(final Collateral collateral, final BigDecimal value, final BigDecimal quantity) {
+        return new LoanCollateral(null, collateral, value, quantity);
     }
 
     protected LoanCollateral() {
         //
     }
 
-    public LoanCollateral(final Loan loan, final CodeValue collateralType, final BigDecimal value, final String description) {
+    public LoanCollateral(final Loan loan, final Collateral collateral, final BigDecimal value, final BigDecimal quantity) {
         this.loan = loan;
-        this.type = collateralType;
+        this.collateral = collateral;
         this.value = value;
-        this.description = StringUtils.defaultIfEmpty(description, null);
+        this.quantity = quantity;
     }
 
-    public void assembleFrom(final CodeValue collateralType, final BigDecimal value, final String description) {
-        this.type = collateralType;
-        this.description = description;
+    public void assembleFrom(final Collateral collateral, final BigDecimal value, final BigDecimal quantity) {
+        this.collateral = collateral;
+        this.quantity = quantity;
         this.value = value;
     }
 
@@ -82,27 +83,27 @@ public class LoanCollateral extends AbstractPersistable<Long> {
         this.loan = loan;
     }
 
-    public static LoanCollateral fromJson(final Loan loan, final CodeValue collateralType, final JsonCommand command) {
-        final String description = command.stringValueOfParameterNamed(COLLATERAL_JSON_INPUT_PARAMS.DESCRIPTION.getValue());
+    public static LoanCollateral fromJson(final Loan loan, final Collateral collateral, final JsonCommand command) {
+        final BigDecimal quantity = command.bigDecimalValueOfParameterNamed(COLLATERAL_JSON_INPUT_PARAMS.QUANTITY.getValue());
         final BigDecimal value = command.bigDecimalValueOfParameterNamed(COLLATERAL_JSON_INPUT_PARAMS.VALUE.getValue());
-        return new LoanCollateral(loan, collateralType, value, description);
+        return new LoanCollateral(loan, collateral, value, quantity);
     }
 
     public Map<String, Object> update(final JsonCommand command) {
 
         final Map<String, Object> actualChanges = new LinkedHashMap<>(7);
 
-        final String collateralTypeIdParamName = COLLATERAL_JSON_INPUT_PARAMS.COLLATERAL_TYPE_ID.getValue();
-        if (command.isChangeInLongParameterNamed(collateralTypeIdParamName, this.type.getId())) {
-            final Long newValue = command.longValueOfParameterNamed(collateralTypeIdParamName);
-            actualChanges.put(collateralTypeIdParamName, newValue);
+        final String collateralIdParamName = COLLATERAL_JSON_INPUT_PARAMS.COLLATERAL_TYPE_ID.getValue();
+        if (command.isChangeInLongParameterNamed(collateralIdParamName, this.collateral.getId())) {
+            final Long newValue = command.longValueOfParameterNamed(collateralIdParamName);
+            actualChanges.put(collateralIdParamName, newValue);
         }
 
-        final String descriptionParamName = COLLATERAL_JSON_INPUT_PARAMS.DESCRIPTION.getValue();
-        if (command.isChangeInStringParameterNamed(descriptionParamName, this.description)) {
-            final String newValue = command.stringValueOfParameterNamed(descriptionParamName);
-            actualChanges.put(descriptionParamName, newValue);
-            this.description = StringUtils.defaultIfEmpty(newValue, null);
+        final String quantityParamName = COLLATERAL_JSON_INPUT_PARAMS.QUANTITY.getValue();
+        if (command.isChangeInBigDecimalParameterNamed(quantityParamName, this.quantity)) {
+            final BigDecimal newValue = command.bigDecimalValueOfParameterNamed(quantityParamName);
+            actualChanges.put(quantityParamName, newValue);
+            this.quantity = newValue ;
         }
 
         final String valueParamName = COLLATERAL_JSON_INPUT_PARAMS.VALUE.getValue();
@@ -115,36 +116,36 @@ public class LoanCollateral extends AbstractPersistable<Long> {
         return actualChanges;
     }
 
-    public CollateralData toData() {
-        final CodeValueData typeData = this.type.toData();
-        return CollateralData.instance(getId(), typeData, this.value, this.description, null);
+//    public CollateralData toData() {
+//        final Collateral collateral = this.type.toData();
+//        return CollateralData.instance(getId(), typeData, this.value, this.description, null);
+//    }
+
+    public void setCollateral(final Collateral collateral) {
+        this.collateral = collateral;
     }
 
-    public void setCollateralType(final CodeValue type) {
-        this.type = type;
-    }
-
-    @Override
-    public boolean equals(final Object obj) {
-        if (obj == null) { return false; }
-        if (obj == this) { return true; }
-        if (obj.getClass() != getClass()) { return false; }
-        final LoanCollateral rhs = (LoanCollateral) obj;
-        return new EqualsBuilder().appendSuper(super.equals(obj)) //
-                .append(getId(), rhs.getId()) //
-                .append(this.type.getId(), rhs.type.getId()) //
-                .append(this.description, rhs.description) //
-                .append(this.value, this.value)//
-                .isEquals();
-    }
-
-    @Override
-    public int hashCode() {
-        return new HashCodeBuilder(3, 5) //
-                .append(getId()) //
-                .append(this.type.getId()) //
-                .append(this.description) //
-                .append(this.value)//
-                .toHashCode();
-    }
+//    @Override
+//    public boolean equals(final Object obj) {
+//        if (obj == null) { return false; }
+//        if (obj == this) { return true; }
+//        if (obj.getClass() != getClass()) { return false; }
+//        final LoanCollateral rhs = (LoanCollateral) obj;
+//        return new EqualsBuilder().appendSuper(super.equals(obj)) //
+//                .append(getId(), rhs.getId()) //
+//                .append(this.type.getId(), rhs.type.getId()) //
+//                .append(this.description, rhs.description) //
+//                .append(this.value, this.value)//
+//                .isEquals();
+//    }
+//
+//    @Override
+//    public int hashCode() {
+//        return new HashCodeBuilder(3, 5) //
+//                .append(getId()) //
+//                .append(this.type.getId()) //
+//                .append(this.description) //
+//                .append(this.value)//
+//                .toHashCode();
+//    }
 }

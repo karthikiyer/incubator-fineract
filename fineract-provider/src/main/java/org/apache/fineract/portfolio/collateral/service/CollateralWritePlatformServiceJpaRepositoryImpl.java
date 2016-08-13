@@ -95,9 +95,7 @@ public class CollateralWritePlatformServiceJpaRepositoryImpl implements Collater
         this.context.authenticatedUser();
         String jsonString=command.json();
         JsonObject json = (JsonObject)(new JsonParser().parse(jsonString));
-        BigDecimal loanValue=new BigDecimal("0.0");
-        String description="";
-        Long type_cv_id=json.get("type_cv_id").getAsLong();
+        //Long collateral_id=json.get("collateral_id").getAsLong();
 //        final CollateralCommand collateralCommand = this.collateralCommandFromApiJsonDeserializer.commandFromApiJson(command.json());
 //        collateralCommand.validateForCreate();
         
@@ -112,10 +110,15 @@ public class CollateralWritePlatformServiceJpaRepositoryImpl implements Collater
             if(json.has("collateralDetails")){
             	JsonArray coll_details=json.get("collateralDetails").getAsJsonArray();
             	for(JsonElement j:coll_details){
+            		BigDecimal quantity=new BigDecimal("0.0");
+            		BigDecimal loanValue=new BigDecimal("0.0");
             		JsonObject obj=(JsonObject)j;
             		Long units=obj.get("units").getAsLong();
+            		quantity=quantity.add(new BigDecimal(units.toString()));
             		Long collateralId=obj.get("collateralId").getAsLong();
+            		//final Collateral collateral = this.collateralRepositoryV2.findOne(collateralId);
             		Collateral c=collateralRepositoryV2.getOne(collateralId);
+            		//Collateral c=new Collateral(base,"trial quality", new BigDecimal("75.00"));
             		BigDecimal pctToBase=c.getPctToBase();
             		Long baseId=c.getBase().getId();
             		CollateralBase base=collateralBaseRepository.getOne(baseId);
@@ -123,17 +126,15 @@ public class CollateralWritePlatformServiceJpaRepositoryImpl implements Collater
             		baseValue=baseValue.multiply(new BigDecimal(units.toString()));
             		baseValue=baseValue.multiply(pctToBase.divide(new BigDecimal("100.0")));
             		loanValue=loanValue.add(baseValue);
-            		description=description+c.getId()+"C<->"+units+"U,";
-            		
+            		LoanCollateral loancollateral=new LoanCollateral(loan,c,loanValue,quantity);
+                    this.collateralRepository.save(loancollateral);
             	}
             }
             
             
     		
-            final CodeValue collateralType = this.codeValueRepository.findOneByCodeNameAndIdWithNotFoundDetection(
-                    CollateralApiConstants.COLLATERAL_CODE_NAME, type_cv_id);
-            LoanCollateral loancollateral=new LoanCollateral(loan,collateralType,loanValue,description);
-            this.collateralRepository.save(loancollateral);
+            
+            
 //            final LoanCollateral collateral = LoanCollateral.fromJson(loan, collateralType, command);
 
             /**
@@ -143,10 +144,15 @@ public class CollateralWritePlatformServiceJpaRepositoryImpl implements Collater
             
 //            this.collateralRepository.save(collateral);
 
+//            return new CommandProcessingResultBuilder() //
+//                    .withCommandId(command.commandId()) //
+//                    .withLoanId(loan.getId())//
+//                    .withEntityId(loancollateral.getId()) //
+//                    .build();
+            
             return new CommandProcessingResultBuilder() //
                     .withCommandId(command.commandId()) //
                     .withLoanId(loan.getId())//
-                    .withEntityId(loancollateral.getId()) //
                     .build();
         } catch (final DataIntegrityViolationException dve) {
             handleCollateralDataIntegrityViolation(dve);
@@ -232,12 +238,12 @@ public class CollateralWritePlatformServiceJpaRepositoryImpl implements Collater
 
             final Map<String, Object> changes = collateralForUpdate.update(command);
 
-            if (changes.containsKey(COLLATERAL_JSON_INPUT_PARAMS.COLLATERAL_TYPE_ID.getValue())) {
-
-                collateralType = this.codeValueRepository.findOneByCodeNameAndIdWithNotFoundDetection(
-                        CollateralApiConstants.COLLATERAL_CODE_NAME, collateralTypeId);
-                collateralForUpdate.setCollateralType(collateralType);
-            }
+//            if (changes.containsKey(COLLATERAL_JSON_INPUT_PARAMS.COLLATERAL_TYPE_ID.getValue())) {
+//
+//                collateralType = this.codeValueRepository.findOneByCodeNameAndIdWithNotFoundDetection(
+//                        CollateralApiConstants.COLLATERAL_CODE_NAME, collateralTypeId);
+//                collateralForUpdate.setCollateralType(collateralType);
+//            }
 
             /**
              * Collaterals may be updated only when the loan associated with

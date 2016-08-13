@@ -6,6 +6,8 @@ import java.util.Map;
 
 import javax.persistence.Column;
 import javax.persistence.Entity;
+import javax.persistence.GeneratedValue;
+import javax.persistence.Id;
 import javax.persistence.JoinColumn;
 import javax.persistence.ManyToOne;
 import javax.persistence.Table;
@@ -25,7 +27,12 @@ import org.springframework.data.jpa.domain.AbstractPersistable;
 @Table(name = "m_collateral")
 public class Collateral extends AbstractPersistable<Long> {
 
-    @ManyToOne
+//	@Column(name="id")
+//	@Id
+//	@GeneratedValue
+//	private Long id;
+    
+	@ManyToOne
     @JoinColumn(name = "base_id", nullable = false)
     private CollateralBase base;
 
