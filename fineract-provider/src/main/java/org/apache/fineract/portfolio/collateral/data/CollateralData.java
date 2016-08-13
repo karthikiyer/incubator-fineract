@@ -32,7 +32,7 @@ import org.apache.fineract.portfolio.collateral.domain.CollateralRepositoryV2;
 public class CollateralData {
 
     private final Long id;
-    private final CollateralProductData collateral;
+    private final CollateralProductData collateralDetails;
     private final BigDecimal value;
     private final BigDecimal quantity;
     @SuppressWarnings("unused")
@@ -51,7 +51,7 @@ public class CollateralData {
     private CollateralData(final Long id, final CollateralProductData collateral, final BigDecimal value, final BigDecimal quantity,
             final CurrencyData currencyData) {
         this.id = id;
-        this.collateral = collateral;
+        this.collateralDetails = collateral;
         this.value = value;
         this.quantity = quantity;
         this.currency = currencyData;
@@ -61,7 +61,7 @@ public class CollateralData {
     private CollateralData(final Long id, final CollateralProductData collateral, final BigDecimal value, final BigDecimal quantity,
             final CurrencyData currencyData, final Collection<CodeValueData> allowedCollateralTypes) {
         this.id = id;
-        this.collateral = collateral;
+        this.collateralDetails = collateral;
         this.value = value;
         this.quantity = quantity;
         this.currency = currencyData;
@@ -69,7 +69,7 @@ public class CollateralData {
     }
 
     public CollateralData template(final CollateralData collateralData, final Collection<CodeValueData> codeValues) {
-        return new CollateralData(collateralData.id, collateralData.collateral, collateralData.value, collateralData.quantity,
+        return new CollateralData(collateralData.id, collateralData.collateralDetails, collateralData.value, collateralData.quantity,
                 collateralData.currency, codeValues);
     }
     

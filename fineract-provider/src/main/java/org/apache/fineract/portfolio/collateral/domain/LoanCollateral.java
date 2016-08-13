@@ -49,6 +49,7 @@ public class LoanCollateral extends AbstractPersistable<Long> {
     @JoinColumn(name = "loan_id", nullable = false)
     private Loan loan;
 
+    @ManyToOne
     @JoinColumn(name = "collateral_id")
     private Collateral collateral;
 
